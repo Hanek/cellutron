@@ -9,6 +9,10 @@
 class entity
 {
 public:
+  struct game
+  { enum gm { GOL, BB }; };
+  
+  int game;
   int gen;
   int size;
   int*    cell;
@@ -25,22 +29,45 @@ public:
   { return swac[x + fieldSize*y]; }
   
   inline void set(int x, int y, int state)
-  { cell[x + fieldSize*y] = (0 == state) ? 0 : 1; }
+  { cell[x + fieldSize*y] = state; }
   
-  /* 
-   * true if color update
-   * false otherwise
-   */
-  bool generate_single(int x, int y);
+  virtual bool generate_single(int x, int y) = 0;
+  virtual int  define_state(int) = 0;
+  
   void make_swap(); 
   void make_swac();
-  
-  int define_state(int);
   void clear(); 
   int      fieldSize;
   int      cellSize;
 };
 
+class gol: public entity
+{
+public:
+  struct state
+  { enum st { DEAD, ALIVE }; };
+  gol(int size): entity(size) { game = game::GOL; };
+  
+  /* true if color update, false otherwise */
+  bool generate_single(int x, int y);
+  int  define_state(int);
+  
+};
 
+class bb: public entity
+{
+public:
+  struct state
+  { enum st { DEAD, ALVA, ALVB }; };
+  
+  int acount;
+  int bcount;
+  bb(int size): entity(size) { game = game::BB; };
+  
+  /* true if color update, false otherwise */
+  bool generate_single(int x, int y);
+  int  define_state(int);
+  
+};
 
 #endif

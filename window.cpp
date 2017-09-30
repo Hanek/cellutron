@@ -1,10 +1,11 @@
 #include "window.h"
 #include <iostream>
 #include <cstdlib>
-/***************************     functions       **********************************/
+
+
 
 /* Draw a rectangle on the screen */
-void field::draw_brush (gdouble x_in, gdouble y_in)
+void field::draw_brush(gdouble x_in, gdouble y_in, bool st)
 {
   GdkRectangle update_rect;
   
@@ -14,18 +15,41 @@ void field::draw_brush (gdouble x_in, gdouble y_in)
   update_rect.height = brush_width;
   
   
-  
-  if(worldRef.get(x, y) == 1)
+  switch(worldRef.game)
   {
-    gdk_draw_rectangle (pixMap, drawingArea->style->white_gc, TRUE, 
+    case entity::game::GOL:
+    if(worldRef.get(x, y) == gol::state::ALIVE)
+    {
+      gdk_draw_rectangle (pixMap, drawingArea->style->white_gc, TRUE, 
                         update_rect.x, update_rect.y, update_rect.width, update_rect.height);
-  }
-  else
-  {
-    gdk_draw_rectangle (pixMap, drawingArea->style->black_gc, TRUE,
+    }
+    else
+    {
+      gdk_draw_rectangle (pixMap, drawingArea->style->black_gc, TRUE,
                         update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+    }
+    break;
+    
+    case entity::game::BB:
+//     std::cout << __func__ << ": bb::state: " << worldRef.get(x, y) << std::endl;
+    if(worldRef.get(x, y) == bb::state::ALVA)
+    {
+        gdk_draw_rectangle (pixMap, drawingArea->style->dark_gc[0], TRUE, 
+                        update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+    }
+    else
+    if(worldRef.get(x, y) == bb::state::ALVB)
+    {
+      gdk_draw_rectangle (pixMap, drawingArea->style->light_gc[3], TRUE,
+                        update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+    }
+    else
+    {
+      gdk_draw_rectangle (pixMap, drawingArea->style->black_gc, TRUE,
+                        update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+    }
+    break;
   }
-  
   gtk_widget_queue_draw_area (drawingArea, update_rect.x, update_rect.y,
                               update_rect.width, update_rect.height);
 }
@@ -45,7 +69,7 @@ void field::draw_grid()
 
 
 
-void field::map_to_grid(gdouble x_in, gdouble y_in)
+void field::map_to_grid(gdouble x_in, gdouble y_in, bool st)
 {
   x = static_cast<int>(x_in);
   y = static_cast<int>(y_in);
@@ -54,10 +78,33 @@ void field::map_to_grid(gdouble x_in, gdouble y_in)
   y = y/(brush_width + 1);
   
   
-  if(worldRef.get(x, y) == 1)
-  { worldRef.set(x, y, 0); }
-  else
-    { worldRef.set(x, y, 1); }
+  switch(worldRef.game)
+  {
+    case entity::game::GOL:
+      if(worldRef.get(x, y) == gol::state::ALIVE)
+      { worldRef.set(x, y, gol::state::DEAD); }
+      else
+      { worldRef.set(x, y, gol::state::ALIVE); }
+      break;
+      
+    case entity::game::BB:
+//       std::cout << __func__ << ": bb::state: " << worldRef.get(x, y) << std::endl;
+      if(st)
+      { /* left mouse click */
+        if(worldRef.get(x, y) > bb::state::DEAD)
+        { worldRef.set(x, y, bb::state::DEAD); }
+        else
+        { worldRef.set(x, y, bb::state::ALVA); }
+      }
+      else
+      { /* right mouse click */
+        if(worldRef.get(x, y) > bb::state::DEAD)
+        { worldRef.set(x, y, bb::state::DEAD); }
+        else
+        { worldRef.set(x, y, bb::state::ALVB); }
+      }
+      break;
+  }
     
   x_m = static_cast<gdouble>(x*(brush_width + 1) + brush_width + 1);
   y_m = static_cast<gdouble>(y*(brush_width + 1) + brush_width + 1);
@@ -70,7 +117,7 @@ static gboolean first_execution = TRUE;
 
 
 /***************************     events       **********************************/
-int exCounter = 0;
+
 gboolean expose_event(GtkWidget *widget, GdkEventExpose *event, gpointer fp)
 {
   field& obj = *((field*)fp);
@@ -116,12 +163,19 @@ gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer f
   
   if(!widget){}
      
-  if (event->button == 1)
+  if(event->button == 1)
   { 
-    obj.map_to_grid(event->x, event->y);
-    obj.draw_brush (obj.x_m, obj.y_m); 
+    /* left mouse button */
+    obj.map_to_grid(event->x, event->y, true);
+    obj.draw_brush (obj.x_m, obj.y_m, true); 
   }
-
+  
+  if(event->button == 3)
+  {
+    /* right mouse button */
+    obj.map_to_grid(event->x, event->y, false);
+    obj.draw_brush(obj.x_m, obj.y_m, false);
+  }
   return TRUE;
 }
 
@@ -147,10 +201,16 @@ gboolean motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer 
     state = (GdkModifierType)event->state;
   }
   
-  if (state & GDK_BUTTON1_MASK)
+  if(state & GDK_BUTTON1_MASK)
   { 
-    obj.map_to_grid(event->x, event->y);
-    obj.draw_brush (obj.x_m, obj.y_m);
+    obj.map_to_grid(event->x, event->y, true);
+    obj.draw_brush (obj.x_m, obj.y_m, true);
+  }
+  
+  if(state & GDK_BUTTON3_MASK)
+  { 
+    obj.map_to_grid(event->x, event->y, false);
+    obj.draw_brush (obj.x_m, obj.y_m, false);
   }
   
   return TRUE;
@@ -240,15 +300,39 @@ void* do_draw(void* p)
         update_rect.x = x_m - brush_width;
         update_rect.y = y_m - brush_width;
         
-        if(worldRef.get(x, y) == 0x00000001)
+        switch(worldRef.game)
         {
-          gdk_draw_rectangle (pixMap, drawingArea->style->white_gc, TRUE, 
+          case entity::game::GOL:
+          if(worldRef.get(x, y) == gol::state::ALIVE)
+          {
+            gdk_draw_rectangle (pixMap, drawingArea->style->white_gc, TRUE, 
                         update_rect.x, update_rect.y, update_rect.width, update_rect.height);
-        }
-        else
-        {
-          gdk_draw_rectangle (pixMap, drawingArea->style->black_gc, TRUE,
+          }
+          else
+          {
+            gdk_draw_rectangle (pixMap, drawingArea->style->black_gc, TRUE,
                         update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+          }
+          break;
+         
+          case entity::game::BB:
+          if(worldRef.get(x, y) == bb::state::ALVA)
+          {
+            gdk_draw_rectangle (pixMap, drawingArea->style->white_gc, TRUE, 
+                        update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+          }
+          else
+          if(worldRef.get(x, y) == bb::state::ALVB)
+          {
+            gdk_draw_rectangle (pixMap, drawingArea->style->light_gc[3], TRUE,
+                        update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+          }
+          else
+          {
+            gdk_draw_rectangle (pixMap, drawingArea->style->black_gc, TRUE,
+                        update_rect.x, update_rect.y, update_rect.width, update_rect.height);
+          }
+          break;
         }
         gtk_widget_queue_draw_area (drawingArea, update_rect.x, update_rect.y,
                               update_rect.width, update_rect.height);

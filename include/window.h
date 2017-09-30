@@ -29,11 +29,11 @@ public:
   int              field_width;
   
   field(window* pWin, entity& wRef, int fw, int bw);
-  
-  void draw_brush(gdouble x, gdouble y);
   void draw_grid();
-  void map_to_grid(gdouble x, gdouble y);
   
+  /* separate logic for different games */
+  void draw_brush(gdouble x, gdouble y, bool st);
+  void map_to_grid(gdouble x, gdouble y, bool st);
 };
 
 

@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     return 0;
   }
   
-  entity world(x);
+  bb world(x);
   ss.clear(); 
   ss << argv[2];
   ss >> x;   
