@@ -4,7 +4,23 @@
 
 
 
+void* window::gui_thread(void* arg)
+{
+  if(arg == NULL)
+  {exit (1);}
+  
+  window* app = (static_cast<window*>(arg));
+  field plot(app, *app->bbw, app->bbw->fieldSize, app->bbw->cellSize);
+  gtk_widget_show(app->mainWindow);
+  gtk_main();
+
+  return 0;
+}
+
+
+
 /* Draw a rectangle on the screen */
+
 void field::draw_brush(gdouble x_in, gdouble y_in, bool st)
 {
   GdkRectangle update_rect;
@@ -69,7 +85,7 @@ void field::draw_grid()
 
 
 
-void field::map_to_grid(gdouble x_in, gdouble y_in, bool st)
+bool field::map_to_grid(gdouble x_in, gdouble y_in, bool st)
 {
   x = static_cast<int>(x_in);
   y = static_cast<int>(y_in);
@@ -77,6 +93,8 @@ void field::map_to_grid(gdouble x_in, gdouble y_in, bool st)
   x = x/(brush_width + 1);
   y = y/(brush_width + 1);
   
+  if(x > worldRef.fieldSize - 1 || y > worldRef.fieldSize - 1)
+  { return false; }
   
   switch(worldRef.game)
   {
@@ -88,7 +106,6 @@ void field::map_to_grid(gdouble x_in, gdouble y_in, bool st)
       break;
       
     case entity::game::BB:
-//       std::cout << __func__ << ": bb::state: " << worldRef.get(x, y) << std::endl;
       if(st)
       { /* left mouse click */
         if(worldRef.get(x, y) > bb::state::DEAD)
@@ -109,6 +126,7 @@ void field::map_to_grid(gdouble x_in, gdouble y_in, bool st)
   x_m = static_cast<gdouble>(x*(brush_width + 1) + brush_width + 1);
   y_m = static_cast<gdouble>(y*(brush_width + 1) + brush_width + 1);
   
+  return true;
 }
 
 
@@ -166,14 +184,16 @@ gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer f
   if(event->button == 1)
   { 
     /* left mouse button */
-    obj.map_to_grid(event->x, event->y, true);
+    if(!obj.map_to_grid(event->x, event->y, true))
+    { return FALSE; }
     obj.draw_brush (obj.x_m, obj.y_m, true); 
   }
   
   if(event->button == 3)
   {
     /* right mouse button */
-    obj.map_to_grid(event->x, event->y, false);
+    if(!obj.map_to_grid(event->x, event->y, false))
+    { return FALSE; }
     obj.draw_brush(obj.x_m, obj.y_m, false);
   }
   return TRUE;
@@ -235,7 +255,8 @@ void* do_clean(void* p)
   char str[10];
   sprintf(str, "%d", pWin->worldRef->gen);  
   gtk_entry_set_text(GTK_ENTRY(pWin->genNum), str);
-    
+
+  std::cout << __func__ << std::endl;  
   int x, y;
   for(y = 0; y < worldRef.fieldSize; y++)
   {
@@ -279,8 +300,7 @@ void* do_draw(void* p)
   while(true)
   {
     int x, y;
-    nanosleep(&pWin->worldField->tts, &pWin->worldField->rts);    
-//     std::cout << "gen: " << pWin->worldRef->gen;
+    nanosleep(&pWin->worldField->tts, &pWin->worldField->rts);
     char str[10];
     sprintf(str, "%d", pWin->worldRef->gen);  
     gdk_threads_enter();
@@ -318,7 +338,7 @@ void* do_draw(void* p)
           case entity::game::BB:
           if(worldRef.get(x, y) == bb::state::ALVA)
           {
-            gdk_draw_rectangle (pixMap, drawingArea->style->white_gc, TRUE, 
+            gdk_draw_rectangle (pixMap, drawingArea->style->dark_gc[0], TRUE, 
                         update_rect.x, update_rect.y, update_rect.width, update_rect.height);
           }
           else
@@ -345,7 +365,6 @@ void* do_draw(void* p)
       first_execution = TRUE;
       return NULL; 
     }
-//     std::cout << "\tdraws: " << draws << std::endl;
   }
 }
 
@@ -367,6 +386,7 @@ void callback_start(GtkWidget *widget, gpointer data)
 {
   if(NULL == widget || NULL == data)
   {return;}
+  
   window* pWin = ((window*)data);
   g_atomic_int_set(&currently_drawing, 0);
 
@@ -401,6 +421,43 @@ void callback_clear(GtkWidget *widget, gpointer data)
   pthread_create(&cleansing_thread, NULL, do_clean, pWin);
   
   g_print ("clear\n");
+}
+
+
+void callback_cb_changed (GtkComboBox *widget, gpointer data)
+{
+  if(NULL == widget || NULL == data)
+  {return;}
+ 
+  GtkComboBox *comboBox = widget;
+  
+  window* pWin = ((window*)data);
+  
+  if(gtk_combo_box_get_active (comboBox) != 0) 
+  {
+    gchar *distro = gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(comboBox));
+    if(strstr((const char*)distro, "Game of Life"))
+    {
+      g_atomic_int_set(&currently_drawing, 3);
+      static pthread_t cleansing_thread;
+      pthread_create(&cleansing_thread, NULL, do_clean, pWin);
+      pWin->worldRef = pWin->golw;
+      pWin->worldField->worldRef = *pWin->golw;
+      std::cout << distro << ": " << pWin->worldRef->game << std::endl;
+    }
+    
+    if(strstr((const char*)distro, "Binary Battle"))
+    {
+      g_atomic_int_set(&currently_drawing, 3);
+      static pthread_t cleansing_thread;
+      pthread_create(&cleansing_thread, NULL, do_clean, pWin);
+      pWin->worldRef = pWin->bbw;
+      pWin->worldField->worldRef = *pWin->bbw;
+      std::cout << distro << ": " << pWin->worldRef->game << std::endl;
+    }
+    
+    g_free (distro);
+  }
 }
 
 
@@ -493,9 +550,19 @@ window::window()
   /* value, lower, upper, step_increment, page_increment, page_size */
   timeAdjust = gtk_adjustment_new (0.0, 0.0, 1000.0, 1.0, 0.0, 0.0);
   adjustScale = gtk_hscale_new (GTK_ADJUSTMENT (timeAdjust));
-  gtk_widget_set_size_request (adjustScale, 111, 36);
+  gtk_widget_set_size_request (adjustScale, 125, 36);
   gtk_fixed_put (GTK_FIXED (panel), adjustScale, 0, 136);
   gtk_widget_show (adjustScale);
+  
+  
+  comboBox = gtk_combo_box_text_new ();
+  const char* distros[] = {"Game selection", "Game of Life", "Binary Battle"};
+  for (int i = 0; i < 3; i++)
+  { gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (comboBox), distros[i]); }
+  gtk_combo_box_set_active (GTK_COMBO_BOX (comboBox), 0);
+  gtk_widget_set_size_request (comboBox, 125, 27);
+  gtk_widget_show (comboBox);
+  gtk_fixed_put (GTK_FIXED (panel), comboBox, 0, 180);
   
   
   fieldFrame = gtk_frame_new (NULL);
@@ -521,6 +588,7 @@ window::window()
   g_signal_connect (GTK_OBJECT(startButton), "clicked", GTK_SIGNAL_FUNC(callback_start), gpointer(this));
   g_signal_connect (GTK_OBJECT(stopButton), "clicked", GTK_SIGNAL_FUNC(callback_stop), gpointer(this));
   g_signal_connect (GTK_OBJECT(clearButton), "clicked", GTK_SIGNAL_FUNC(callback_clear), gpointer(this));
+  g_signal_connect (GTK_OBJECT(comboBox), "changed", G_CALLBACK(callback_cb_changed), gpointer(this));
   g_timeout_add(200, (GSourceFunc)time_handler, (gpointer) this);
   
 }

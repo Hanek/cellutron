@@ -12,24 +12,6 @@
 using namespace std;
 
 
-
-void* gui_thread(void* arg)
-{
-  if(arg == NULL)
-  {exit (1);}
-  
-  window app;
-  entity& world =  *(static_cast<entity*>(arg));
-  field plot(&app, world, world.fieldSize, world.cellSize);
-
-  std::cout << "fs: " << world.fieldSize << " cs: " << world.cellSize << std::endl;
-  
-  gtk_widget_show(app.mainWindow);
-  gtk_main();
-
-  return 0;
-}
-
 void print_help()
 {
   std::cout << "Usage: ./cellutron [field size] [cell size]\n\n";
@@ -52,11 +34,14 @@ int main(int argc, char *argv[])
     print_help();
     return 0;
   }
+  bb* bbw   = new bb(x);
+  gol* golw = new gol(x);
   
-  bb world(x);
+  
   ss.clear(); 
   ss << argv[2];
-  ss >> x;   
+  ss >> x;
+  
   
   if(ss.fail())
   { 
@@ -64,9 +49,16 @@ int main(int argc, char *argv[])
     print_help();
     return 0;
   }
-  world.cellSize = x; 
+  
+  bbw->cellSize  = x;
+  golw->cellSize = x;
+  
+  window app;
 
-  if(0 != pthread_create(&gui, NULL, gui_thread, &world))
+  app.golw = golw;
+  app.bbw  = bbw;
+
+  if(0 != pthread_create(&gui, NULL, window::gui_thread, &app))
   {
     std::cout << "pthread_create() failure" << std::endl;
     exit(EXIT_FAILURE);
@@ -76,6 +68,9 @@ int main(int argc, char *argv[])
   {
     sleep(1);
   }
+  
+  delete bbw;
+  delete golw;
 
     
   return 0;

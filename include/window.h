@@ -12,7 +12,7 @@
 #ifndef _WINDOW_H
 #define _WINDOW_H
 
-class window;
+struct window;
 
 class field
 {
@@ -33,7 +33,7 @@ public:
   
   /* separate logic for different games */
   void draw_brush(gdouble x, gdouble y, bool st);
-  void map_to_grid(gdouble x, gdouble y, bool st);
+  bool map_to_grid(gdouble x, gdouble y, bool st);
 };
 
 
@@ -53,10 +53,14 @@ struct window
   GtkWidget *fieldFrame;
   GtkWidget *fieldAlignment;
   GtkWidget *fieldLabel;
+  GtkWidget *comboBox;
   
   entity* worldRef;
   field*  worldField;
-  
+  gol*    golw;
+  bb*     bbw;
+  static void* gui_thread(void* arg);
+    
   window();
 };
 

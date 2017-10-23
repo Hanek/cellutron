@@ -20,7 +20,7 @@ public:
   int*    swac;
   
   entity(int);
-  ~entity();
+  virtual ~entity();
   
   inline const int& get(int x, int y) 
   { return cell[x + fieldSize*y]; }
@@ -46,7 +46,8 @@ class gol: public entity
 public:
   struct state
   { enum st { DEAD, ALIVE }; };
-  gol(int size): entity(size) { game = game::GOL; };
+  gol(int size): entity(size) { game = game::GOL; }
+  virtual ~gol(){}
   
   /* true if color update, false otherwise */
   bool generate_single(int x, int y);
@@ -62,7 +63,8 @@ public:
   
   int acount;
   int bcount;
-  bb(int size): entity(size) { game = game::BB; };
+  bb(int size): entity(size) { game = game::BB; }
+  virtual ~bb() {}
   
   /* true if color update, false otherwise */
   bool generate_single(int x, int y);

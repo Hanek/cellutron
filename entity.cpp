@@ -155,7 +155,16 @@ bool bb::generate_single(int x, int y)
   int i   = x + fieldSize*y;
   int sw  = swac[i]; 
   int res = define_state(i);
-  
+
+  /*
+   * Any live cell with seven live neighbours dies due to overpopulation;
+   * Any live cell with less then seven live neighbours and with more live    
+   * neighbours of opposite race then its own, becomes dead due to struggle for 
+   * survival;
+   * Any dead cell becomes alive if it has at least one live neighbour and the
+   * newborn cell acquire a race of majority, if black neighbours equals whith
+   * neighbours then cell remains dead;
+   */
   
   if(cell[i] != state::DEAD)
   {
@@ -174,37 +183,6 @@ bool bb::generate_single(int x, int y)
     if(acount < bcount)
     { swap[i] = state::ALVB; }  
   }
-  
-    
-//   /* Any live cell with seven live neighbours dies due to overpopulation */
-//   if(res == 7 && cell[i] > state::DEAD)
-//   { swap[i] = state::DEAD; }
-//   
-//   /* 
-//    * Any live cell with less then seven live neighbours and with more live         
-//    * neighbours of opposite race then its own, becomes dead due to 
-//    * struggle for survival;
-//    */
-//   if(res < 7 && ((cell[i] == state::ALVA && bcount > acount + 1) ||
-//                  (cell[i] == state::ALVB && acount > bcount) + 1))
-//   { swap[i] = state::DEAD; }
-//   
-//   /*
-//    * Any dead cell becomes alive if it has at least one live neighbour and the
-//    * newborn cell acquire a race of majority, if black neighbours equals white
-//    * neighbours then cell remains dead
-//    */
-//   if(cell[i] == state::DEAD && res > 0)
-//   { 
-//     if(acount > bcount)
-//     { swap[i] = state::ALVA; }
-//     
-//     if(bcount > acount)
-//     { swap[i] = state::ALVB; }
-//   }
-  
-  std::cout << __func__ << ":" << i << ":" << sw << ":" << cell[i]
-            << ":" << res << ":" << acount << ":" << bcount << std::endl;
   
   if((sw && !cell[i]) || (cell[i] && !sw))
     return true;
